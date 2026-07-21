@@ -85,22 +85,30 @@ final deviceAuthProvider = Provider<IDeviceAuth>(
   (_) => const UnavailableDeviceAuth(),
 );
 
-/// Whether the lock was on at launch — read in main() before runApp so the
-/// first frame is already locked (no unlocked flash).
+/// Whether the lock / biometric were on at launch — read in main() before
+/// runApp so the first frame is already locked (no unlocked flash).
 final appLockEnabledOnLaunchProvider = Provider<bool>((_) => false);
+final appLockBiometricOnLaunchProvider = Provider<bool>((_) => false);
+
+/// Argon2id verifier for the app-lock fallback password.
+final passwordHasherProvider = Provider<IPasswordHasher>(
+  (_) => const Argon2PasswordHasher(),
+);
 
 final lockControllerProvider = ChangeNotifierProvider<LockController>(
   (ref) => LockController(
     deviceAuth: ref.watch(deviceAuthProvider),
+    hasher: ref.watch(passwordHasherProvider),
     storage: ref.watch(secureStorageProvider),
     clock: () => ref.read(clockProvider)(),
     storageKey: 'budgetly_app_lock_enabled',
     appName: 'Budgetly',
     enabled: ref.watch(appLockEnabledOnLaunchProvider),
+    biometricEnabled: ref.watch(appLockBiometricOnLaunchProvider),
   ),
 );
 
-/// Settings availability: whether the device can show an auth prompt.
+/// Settings availability: whether the device has enrolled biometrics.
 final deviceAuthAvailableProvider = FutureProvider<bool>(
   (ref) => ref.watch(deviceAuthProvider).canAuthenticate(),
 );

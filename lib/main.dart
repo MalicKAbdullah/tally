@@ -8,11 +8,14 @@ import 'package:budgetly/src/core/providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Read the lock flag before the first frame so the app opens already locked.
+  // Read the lock flags before the first frame so the app opens already
+  // locked (no unlocked flash on cold start).
   const storage = SecureStorageImpl(FlutterSecureStorage());
-  final lockEnabled = await LockController.readEnabled(
+  const lockKey = 'budgetly_app_lock_enabled';
+  final lockEnabled = await LockController.readEnabled(storage, lockKey);
+  final biometricEnabled = await LockController.readBiometricEnabled(
     storage,
-    'budgetly_app_lock_enabled',
+    lockKey,
   );
 
   runApp(
@@ -20,6 +23,7 @@ Future<void> main() async {
       overrides: [
         deviceAuthProvider.overrideWithValue(LocalAuthDeviceAuth()),
         appLockEnabledOnLaunchProvider.overrideWithValue(lockEnabled),
+        appLockBiometricOnLaunchProvider.overrideWithValue(biometricEnabled),
       ],
       child: const BudgetlyApp(),
     ),

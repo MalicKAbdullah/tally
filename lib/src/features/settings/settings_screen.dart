@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:core_backup/core_backup.dart';
+import 'package:core_lock/core_lock.dart';
 import 'package:core_theme/core_theme.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -53,7 +54,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.md),
           Text('Security', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.sm),
-          _AppLockTile(),
+          AppLockSettings(controller: ref.watch(lockControllerProvider)),
           const SizedBox(height: AppSpacing.md),
           Text(
             'Automatic backup',
@@ -238,38 +239,6 @@ class _AutoCaptureTileState extends ConsumerState<_AutoCaptureTile>
           // the actual grant. We re-read on resume.
           await ref.read(captureServiceProvider).openSettings();
         },
-      ),
-    );
-  }
-}
-
-/// "Require unlock" toggle backed by core_lock. Disabled (with a hint) when the
-/// device has no biometrics or screen lock set up.
-class _AppLockTile extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final controller = ref.watch(lockControllerProvider);
-    final available = ref.watch(deviceAuthAvailableProvider).valueOrNull;
-    return Card(
-      child: SwitchListTile(
-        secondary: const Icon(Icons.fingerprint),
-        title: const Text('Require unlock'),
-        subtitle: Text(
-          available == false
-              ? 'Set up a fingerprint or screen lock on your device first'
-              : 'Ask for fingerprint / device PIN to open Budgetly',
-        ),
-        value: controller.isEnabled,
-        onChanged: available == false
-            ? null
-            : (v) async {
-                final ok = await controller.setEnabled(v);
-                if (!ok && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Authentication cancelled.')),
-                  );
-                }
-              },
       ),
     );
   }
