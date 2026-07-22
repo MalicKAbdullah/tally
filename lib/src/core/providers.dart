@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:core_backup/core_backup.dart';
 import 'package:core_crypto/core_crypto.dart';
 import 'package:core_lock/core_lock.dart';
+import 'package:core_notify/core_notify.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:core_update/core_update.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +18,7 @@ import 'package:budgetly/src/core/storage/budgetly_store.dart';
 import 'package:budgetly/src/core/storage/vault_file.dart';
 import 'package:budgetly/src/features/backup/backup_codec.dart';
 import 'package:budgetly/src/features/import/capture_service.dart';
+import 'package:budgetly/src/features/notifications/budget_notifier.dart';
 
 /// Wall clock as a function. Tests override with a fixed time.
 final clockProvider = Provider<DateTime Function()>((_) => DateTime.now);
@@ -143,6 +145,18 @@ final updateCheckProvider = FutureProvider<UpdateInfo?>((ref) async {
 
 /// Session-only dismissal of the update banner.
 final updateDismissedProvider = StateProvider<bool>((_) => false);
+
+// -- Notifications (core_notify) ------------------------------------------
+
+/// Overridden in main() with an initialized [LocalNotify].
+final notifyProvider = Provider<INotify>((_) => const NoopNotify());
+
+final budgetNotifierProvider = Provider<BudgetNotifier>(
+  (ref) => BudgetNotifier(
+    notify: ref.watch(notifyProvider),
+    storage: ref.watch(secureStorageProvider),
+  ),
+);
 
 /// Captured-but-unreviewed notification texts. Invalidate after any
 /// accept/dismiss and on app resume so the dashboard banner stays current.

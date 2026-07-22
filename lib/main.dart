@@ -1,10 +1,12 @@
 import 'package:core_lock/core_lock.dart';
+import 'package:core_notify/core_notify.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:budgetly/src/app.dart';
 import 'package:budgetly/src/core/providers.dart';
+import 'package:budgetly/src/features/notifications/budget_notifier.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,12 +20,19 @@ Future<void> main() async {
     lockKey,
   );
 
+  // Local notifications (budget alerts + monthly summary). Tapping just opens
+  // the app; the dashboard handles routing.
+  final notify = LocalNotify();
+  await notify.initialize(channels: BudgetNotifier.channels, onSelect: (_) {});
+  await notify.requestPermission();
+
   runApp(
     ProviderScope(
       overrides: [
         deviceAuthProvider.overrideWithValue(LocalAuthDeviceAuth()),
         appLockEnabledOnLaunchProvider.overrideWithValue(lockEnabled),
         appLockBiometricOnLaunchProvider.overrideWithValue(biometricEnabled),
+        notifyProvider.overrideWithValue(notify),
       ],
       child: const BudgetlyApp(),
     ),

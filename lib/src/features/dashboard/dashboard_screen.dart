@@ -93,6 +93,108 @@ class _CaptureBanner extends ConsumerWidget {
   }
 }
 
+/// Fires the on-open budget notification checks exactly once per app open.
+/// Renders nothing.
+class _NotifyTrigger extends ConsumerStatefulWidget {
+  const _NotifyTrigger({required this.data});
+  final AppData data;
+
+  @override
+  ConsumerState<_NotifyTrigger> createState() => _NotifyTriggerState();
+}
+
+class _NotifyTriggerState extends ConsumerState<_NotifyTrigger> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(budgetNotifierProvider).checkOnOpen(widget.data, DateTime.now());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
+/// Where the money went this month: the top spending categories as ranked
+/// horizontal bars (all spend, budgeted or not).
+class _CategoryBreakdown extends StatelessWidget {
+  const _CategoryBreakdown({
+    required this.data,
+    required this.month,
+    required this.code,
+  });
+  final AppData data;
+  final DateTime month;
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows =
+        Budgets.byCategory(data, month).where((c) => c.spentMinor > 0).toList()
+          ..sort((a, b) => b.spentMinor.compareTo(a.spentMinor));
+    if (rows.isEmpty) return const SizedBox.shrink();
+    final top = rows.take(5).toList();
+    final max = top.first.spentMinor;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Top categories',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              for (final c in top)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              c.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            Money.format(c.spentMinor, code: code),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: max == 0 ? 0 : c.spentMinor / max,
+                          minHeight: 6,
+                          backgroundColor: scheme.surfaceContainerHighest,
+                          color: scheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Body extends StatelessWidget {
   const _Body({required this.data});
   final AppData data;
@@ -121,6 +223,7 @@ class _Body extends StatelessWidget {
         96,
       ),
       children: [
+        _NotifyTrigger(data: data),
         const _UpdateCard(),
         const _CaptureBanner(),
         Text(
@@ -132,6 +235,7 @@ class _Body extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         _SpendChart(data: data, code: code),
         const SizedBox(height: AppSpacing.md),
+        _CategoryBreakdown(data: data, month: month, code: code),
         _NetWorthCard(data: data, code: code),
         if (Reimbursements.totalOwedMinor(data) > 0) ...[
           const SizedBox(height: AppSpacing.md),
